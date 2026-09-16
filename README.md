@@ -151,4 +151,4 @@ node dist/index.js   # speaks MCP over stdio
 
 ## License
 
-MIT
+GPL-3.0-only. See [LICENSE](LICENSE).
