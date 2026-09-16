@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "blesta": {
+      "command": "node",
+      "args": ["/absolute/path/to/blesta-mcp/dist/index.js"],
+      "env": {
+        "BLESTA_URL": "https://billing.example.com",
+        "BLESTA_API_USER": "apiuser",
+        "BLESTA_API_KEY": "your-key",
+        "BLESTA_READ_ONLY": "1",
+        "BLESTA_SYSTEM_KEY_FILE": "/home/you/.config/blesta-mcp/system_key",
+        "BLESTA_PUBLIC_URL": "https://www.example.com/clients"
+      }
+    }
+  }
+}
