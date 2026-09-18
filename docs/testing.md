@@ -63,7 +63,7 @@ Use `BLESTA_READ_ONLY=1` and run in this order; each step exercises a different 
 |---|---|
 | 24 read tools | live, read-only, against a Blesta 5.x IonCube install |
 | `create_invoice_payment_link` / `verify_invoice_payment_link` | live; generated link opens the payment page without a login |
-| 9 write tools | mock only: paths, parameter names and encoding checked against `app/models/*.php` validation rules; refused live under `BLESTA_READ_ONLY=1` |
+| 10 write tools | mock only: paths, parameter names and encoding checked against `app/models/*.php` validation rules; refused live under `BLESTA_READ_ONLY=1` |
 
 Safest first live write: `add_client_note` on a test client with an unmistakable title, then remove it with `blesta_call` `clients/deleteNote` (`{ "note_id": N }`, DELETE). Run that once with `BLESTA_READ_ONLY` unset before trusting the other write tools.
 

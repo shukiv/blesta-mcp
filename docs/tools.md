@@ -552,7 +552,32 @@ Wraps `Transactions.add(vars)` with `type: "other"`, `status: "approved"`, then 
 | `message` | string | no | |
 | `date_received` | string | no | ISO 8601 with timezone |
 
+`payment_type` (optional) is the offline payment type name configured in Blesta (Settings > Company > Payments > Payment Types), resolved through `Transactions.getTypes` to `transaction_type_id`. An unknown name fails and lists the configured types.
+
 If `add` succeeds but `apply` fails, the output carries `apply_error` and the transaction remains as unapplied credit.
+
+## record_invoice_payment (write)
+
+Shortcut for the common case: money was received for one invoice. Reads the invoice with `Invoices.get`, takes `client_id`, `currency` and the remaining due from it, records the payment with `Transactions.add` (`type: "other"`, `status: "approved"`) and applies it with `Transactions.apply`. Nothing is charged.
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `invoice_id` | integer | yes | |
+| `amount` | number | no | Default: the invoice's remaining due |
+| `allow_overpayment` | boolean | no | Default `false`. When `amount` exceeds the due, apply the due and keep the remainder as unapplied client credit instead of failing |
+| `payment_type` | string | no | Offline payment type name, resolved via `Transactions.getTypes` |
+| `reference` | string | no | Stored as `reference_id` |
+| `message` | string | no | |
+| `date_received` | string | no | ISO 8601 with timezone |
+
+Refuses void and draft invoices and invoices with nothing due. Output:
+
+```json
+{ "transaction_id": 500, "invoice_id": 7, "amount_received": 10, "amount_applied": 10, "unapplied_credit": 0,
+  "invoice_after": { "status": "active", "paid": "10.0000", "due": "0.0000" } }
+```
+
+If `apply` fails after `add` succeeded, `apply_error` is set, `amount_applied` is `0` and the full amount remains as client credit.
 
 ## apply_transaction (write)
 

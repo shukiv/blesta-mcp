@@ -34,6 +34,7 @@ It ships a small set of purpose-built, read-only tools for the common support wo
 | `update_invoice` (write) | Header fields incl. void | `Invoices.edit` |
 | `suspend_service` / `unsuspend_service` / `cancel_service` (write) | Service lifecycle | `Services.suspend`, `unsuspend`, `cancel` |
 | `record_manual_payment` (write) | Record offline payment and apply it | `Transactions.add`, `Transactions.apply` |
+| `record_invoice_payment` (write) | Record offline payment for one invoice by invoice ID | `Invoices.get`, `Transactions.add`, `Transactions.apply` |
 | `apply_transaction` (write) | Apply existing credit to invoices | `Transactions.apply` |
 | `process_payment` (write, off by default) | Charge a stored payment account | `Payments.processPayment` |
 | `blesta_call` | Call any `{model}/{method}` with named parameters | anything in [source-docs.blesta.com](https://source-docs.blesta.com/packages/blesta-app-models.html) |
@@ -132,7 +133,7 @@ Two Blesta quirks worth knowing:
 * Timestamps sent to Blesta must include a timezone (`2026-01-31T12:00:00Z`); Blesta otherwise assumes the company's local time.
 * On IonCube-encoded installs a call can fail with `Failed to retrieve the default value` when an optional argument is omitted. The curated tools omit a few trailing optionals (`transactions/getApplied` without `transaction_id`, `services/getList` without `filters`), so `get_invoice_payments` and `get_client_services` are the first tools to try against a real install; if they return that error, open an issue and the calls will be made fully explicit.
 * `create_invoice_payment_link` and `verify_invoice_payment_link` still work under `BLESTA_READ_ONLY=1`: `Encryption.systemEncrypt`/`systemDecrypt` are side-effect free and are the only POST calls allowed in that mode.
-* Verified against a live IonCube-encoded 5.x install: all 24 read tools pass. The 9 write tools were verified against a mock only (request paths, names and `http_build_query` encoding checked against the Blesta model sources); they have not been executed against a live install. A generated payment link opens Blesta's payment-method page without a login once `BLESTA_SYSTEM_KEY`/`BLESTA_SYSTEM_KEY_FILE` is set (see Configuration). Passing an empty key is not equivalent to the default: Blesta uses the empty string literally, so the resulting `sid` is rejected.
+* Verified against a live IonCube-encoded 5.x install: all 24 read tools pass. The 10 write tools were verified against a mock only (request paths, names and `http_build_query` encoding checked against the Blesta model sources); they have not been executed against a live install. A generated payment link opens Blesta's payment-method page without a login once `BLESTA_SYSTEM_KEY`/`BLESTA_SYSTEM_KEY_FILE` is set (see Configuration). Passing an empty key is not equivalent to the default: Blesta uses the empty string literally, so the resulting `sid` is rejected.
 
 ## Documentation
 
