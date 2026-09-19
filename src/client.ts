@@ -253,6 +253,45 @@ export class BlestaClient {
     return body as T;
   }
 
+  /**
+   * Calls {model}/{method} and returns the raw HTTP response body (for endpoints that stream binary
+   * data instead of JSON, e.g. the Component API plugin returning a PDF). GET only, so it is always
+   * allowed in read-only mode. Non-200 responses are converted to BlestaError like `call`.
+   */
+  async callRaw(
+    model: string,
+    method: string,
+    params: Params = {}
+  ): Promise<{ status: number; contentType: string; body: Buffer }> {
+    if (!MODEL.test(model)) throw new BlestaError(`Invalid model name: ${model}`, 0, null);
+    if (!PATH_SEGMENT.test(method)) throw new BlestaError(`Invalid method name: ${method}`, 0, null);
+    const encoded = phpQuery(params).toString();
+    const url = `${this.apiUrl}${model}/${method}.json${encoded ? `?${encoded}` : ""}`;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "GET",
+        headers: { "BLESTA-API-USER": this.user, "BLESTA-API-KEY": this.key },
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new BlestaError(`Request to ${model}/${method} failed: ${msg}`, 0, null);
+    }
+    const body = Buffer.from(await res.arrayBuffer());
+    if (res.status !== 200) {
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(body.toString("utf8"));
+      } catch {
+        parsed = { message: body.toString("utf8").slice(0, 500) };
+      }
+      const message = (parsed as { message?: string } | null)?.message ?? `HTTP ${res.status} ${res.statusText}`;
+      throw new BlestaError(message, res.status, parsed);
+    }
+    return { status: res.status, contentType: res.headers.get("content-type") ?? "", body };
+  }
+
   get<T = unknown>(model: string, method: string, params?: Params): Promise<T> {
     return this.call<T>(model, method, params, "GET");
   }

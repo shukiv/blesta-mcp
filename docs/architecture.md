@@ -14,6 +14,7 @@ src/index.ts          creates McpServer, registers tool groups, serves stdio
         ├── src/tools/payments.ts    get_invoice_payments, create_/verify_invoice_payment_link
         ├── src/tools/transactions.ts get_client_transactions, get_transaction, get_payment_accounts,
         │                            record_manual_payment, apply_transaction, process_payment
+        ├── src/tools/documents.ts  download_invoice_pdf (Component API plugin, binary response)
         ├── src/tools/catalog.ts     list_packages, get_package, list_quotations, get_quotation, lookup_coupon
         └── src/tools/generic.ts     blesta_call
 src/common.ts         READ/WRITE/DESTRUCTIVE annotation presets, resolveStaffId, resolveCompanyId

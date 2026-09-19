@@ -9,6 +9,7 @@ import { registerPaymentTools } from "./tools/payments.js";
 import { registerGenericTools } from "./tools/generic.js";
 import { registerTransactionTools } from "./tools/transactions.js";
 import { registerCatalogTools } from "./tools/catalog.js";
+import { registerDocumentTools } from "./tools/documents.js";
 
 const SERVER_NAME = "blesta-mcp";
 const SERVER_VERSION = "0.1.0";
@@ -32,6 +33,7 @@ export function createServer(): McpServer {
   registerPaymentTools(server, api, { clientUri: process.env.BLESTA_CLIENT_URI ?? "client/" });
   registerTransactionTools(server, api);
   registerCatalogTools(server, api);
+  registerDocumentTools(server, api);
   registerGenericTools(server, api);
   return server;
 }

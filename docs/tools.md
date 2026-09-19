@@ -538,6 +538,28 @@ Wraps `Services.cancel(service_id, vars)`.
 
 `now` is sent as a timestamp one minute in the past, which Blesta treats as immediate. Scheduled cancellations run from cron and can be reverted with `blesta_call` `services/unCancel` before they execute. `reapply_payments` is always `true` so credits on removed line items are re-applied.
 
+## download_invoice_pdf (read)
+
+Renders one or more invoices with Blesta's own invoice template and saves the PDF locally. Requires the [Component API plugin](https://docs.blesta.com/integrations/plugins/component-api/); the call is `ComponentApi.ComponentApiCaller/call` with `component=InvoiceDelivery`, `method=downloadInvoices`, `params[invoice_ids][]`, optionally `params[options][language]`. Blesta streams raw PDF bytes instead of JSON, so the server reads the body as binary and checks for the `%PDF-` magic. Nothing is emailed and nothing in Blesta changes; allowed in read-only mode.
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `invoice_ids` | integer[] (1-20) | yes | Numeric IDs. Several IDs produce one combined document |
+| `output_dir` | string | no | Default `BLESTA_DOWNLOAD_DIR`, else `<os tmp>/blesta-mcp` |
+| `filename` | string | no | Basename only (directories are stripped); default `<invoice_number>.pdf` or `invoices-<ids>.pdf` |
+| `language` | string | no | e.g. `en_us`; default is the client's language |
+| `include_base64` | boolean | no | Also embeds the PDF as an MCP resource content block (`application/pdf`, base64). Large |
+
+Output:
+
+```json
+{ "path": "/tmp/blesta-mcp/1042.pdf", "bytes": 168122,
+  "invoices": [ { "invoice_id": 7, "invoice_number": "1042", "client_id": 1, "status": "active" } ],
+  "language": "client default" }
+```
+
+Each invoice is fetched with `Invoices.get` first, so an unknown ID fails before anything is rendered. If the plugin is missing, the response is JSON rather than a PDF and the tool reports that with installation instructions.
+
 ## record_manual_payment (write)
 
 Wraps `Transactions.add(vars)` with `type: "other"`, `status: "approved"`, then `Transactions.apply(transaction_id, { amounts })` when `apply_to` is given. Records money already received; nothing is charged.

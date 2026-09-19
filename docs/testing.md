@@ -61,7 +61,7 @@ Use `BLESTA_READ_ONLY=1` and run in this order; each step exercises a different 
 
 | Group | Verified how |
 |---|---|
-| 24 read tools | live, read-only, against a Blesta 5.x IonCube install |
+| 25 read tools | live, read-only, against a Blesta 5.x IonCube install (`download_invoice_pdf` needs the Component API plugin installed there) |
 | `create_invoice_payment_link` / `verify_invoice_payment_link` | live; generated link opens the payment page without a login |
 | 10 write tools | mock only: paths, parameter names and encoding checked against `app/models/*.php` validation rules; refused live under `BLESTA_READ_ONLY=1` |
 

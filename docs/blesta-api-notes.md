@@ -139,3 +139,10 @@ The hash never expires; it is a keyed hash of client and invoice IDs.
 | Company settings | `companies/getSettings` `{company_id}` |
 | Currencies | `currencies/getAll` `{company_id}` |
 | Record an offline payment (write) | `transactions/add` `{vars:{client_id, amount, currency, type:"other", status:"approved"}}` then `transactions/apply` `{transaction_id, vars:{amounts:[{invoice_id, amount}]}}` |
+
+## Invoice PDFs and the Component API plugin
+
+No model under `app/models/` renders a PDF (checked all 63 in 5.x). Rendering is in `components/invoice_delivery/invoice_delivery.php` (`buildInvoices`, `downloadInvoices`, `deliverInvoices`), and components are not routable through `/api/`. The client and admin controllers that download PDFs require a browser login session. `Invoices.fetchCache(invoice_id, "pdf", language)` returns a cached PDF only when the company setting `inv_cache` is `json_pdf` and the invoice was rendered since.
+
+Blesta's own [Component API plugin](https://docs.blesta.com/integrations/plugins/component-api/) closes the gap: `GET /api/ComponentApi.ComponentApiCaller/call.json?component=InvoiceDelivery&method=downloadInvoices&params[invoice_ids][0]=ID`. The response is the raw PDF (`Content-Type: application/pdf`), not a JSON envelope, so it needs a binary-safe HTTP path (`BlestaClient.callRaw`). `deliverInvoices` (email to an arbitrary address) is reachable the same way but is not wrapped by a tool yet.
+

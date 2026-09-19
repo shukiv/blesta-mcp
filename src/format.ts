@@ -1,8 +1,12 @@
 import { BlestaError } from "./client.js";
 
 /** Shape returned by every tool handler (matches the MCP CallToolResult content array). */
+export type ToolContent =
+  | { type: "text"; text: string }
+  | { type: "resource"; resource: { uri: string; mimeType: string; blob: string } };
+
 export interface ToolResult {
-  content: { type: "text"; text: string }[];
+  content: ToolContent[];
   isError?: boolean;
   [key: string]: unknown;
 }
