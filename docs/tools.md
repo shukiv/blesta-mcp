@@ -545,7 +545,7 @@ Renders one or more invoices with Blesta's own invoice template and saves the PD
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `invoice_ids` | integer[] (1-20) | yes | Numeric IDs. Several IDs produce one combined document |
-| `output_dir` | string | no | Default `BLESTA_DOWNLOAD_DIR`, else `<os tmp>/blesta-mcp` |
+| `output_dir` | string | no | Subdirectory below the download root (`BLESTA_DOWNLOAD_DIR`, else `<os tmp>/blesta-mcp`). Paths that resolve outside the root, lexically or through a symlink, are refused |
 | `filename` | string | no | Basename only (directories are stripped); default `<invoice_number>.pdf` or `invoices-<ids>.pdf` |
 | `language` | string | no | e.g. `en_us`; default is the client's language |
 | `include_base64` | boolean | no | Also embeds the PDF as an MCP resource content block (`application/pdf`, base64). Large |
@@ -558,7 +558,7 @@ Output:
   "language": "client default" }
 ```
 
-Each invoice is fetched with `Invoices.get` first, so an unknown ID fails before anything is rendered. If the plugin is missing, the response is JSON rather than a PDF and the tool reports that with installation instructions.
+Files are written with mode `0600` into `0700` directories and never through an existing symlink (`O_NOFOLLOW`). Each invoice is fetched with `Invoices.get` first, so an unknown ID fails before anything is rendered. If the plugin is missing, the response is JSON rather than a PDF and the tool reports that with installation instructions.
 
 ## record_manual_payment (write)
 
