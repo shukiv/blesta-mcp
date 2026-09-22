@@ -146,3 +146,13 @@ No model under `app/models/` renders a PDF (checked all 63 in 5.x). Rendering is
 
 Blesta's own [Component API plugin](https://docs.blesta.com/integrations/plugins/component-api/) closes the gap: `GET /api/ComponentApi.ComponentApiCaller/call.json?component=InvoiceDelivery&method=downloadInvoices&params[invoice_ids][0]=ID`. The response is the raw PDF (`Content-Type: application/pdf`), not a JSON envelope, so it needs a binary-safe HTTP path (`BlestaClient.callRaw`). `deliverInvoices` (email to an arbitrary address) is reachable the same way but is not wrapped by a tool yet.
 
+## Services: what the model does and does not do
+
+* `Services.edit` performs one module action per call (package change or field edit, not both) and has no proration. The admin UI prices an upgrade with `ServiceChanges.getPresenter`, a PHP presenter object that serializes to `{}` over the API, so an MCP tool cannot reproduce Blesta's prorated invoice; it changes the package and reports old/new pricing instead.
+* When `pricing_id` changes every configurable option must be resent as `configoptions[option_id] = value|qty` (`PackageOptions::formatServiceOptions`).
+* Unless `bypass_module` is true the module validates its own fields on every edit (`$module->validateServiceEdit`), e.g. the universal module requires `domain`. The tools resend the service's stored plaintext fields and accept `module_fields` for the rest.
+* `Packages.getByPricingId` fails on IonCube installs with "Failed to retrieve the default value"; `Services.getPackagePricing(pricing_id)` plus `Packages.get(package_id)` gives the same data.
+* `Services.validate(vars, packages)` and `Services.validateServiceEdit(service_id, vars, bypass_module)` run the full rule set without writing and answer HTTP 400 with field errors, which makes a genuine dry run possible over GET.
+* `Services.delete` only removes `pending`, `in_review` or `canceled` services whose children are all canceled. `Services.renew` merely notifies the module after payment; the renewal invoice comes from `Invoices.createFromServices(..., services_renew=true)`.
+* Left to `blesta_call`: the cron-oriented getters (`getAllRenewing`, `getRenewablePaidList`, `getPendingSuspensionList`, ...), `getSimpleList`, `getAllByClient`, `searchServiceFields`, `getWelcomeEmailTags` and `renew`.
+

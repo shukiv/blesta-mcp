@@ -516,6 +516,75 @@ Two Blesta behaviours are handled for you (verified in `app/models/invoices.php`
 
 A status or currency change on an invoice that already has payments applied is refused by Blesta with `id.amount_applied`; the tool surfaces that error unchanged.
 
+## get_service (read)
+
+One service in full: compact record (module fields with encrypted values hidden), `pricing_info` (price, setup fee, cancel fee, tax, currency), `next_invoice_date`, configurable `options`, `children`, `available_actions` and queued `pending_changes`. Wraps `Services.get`, `getOptions`, `getPricingInfo`, `getNextInvoiceDate(service_id, "Y-m-d H:i:s")`, `getAllChildren(service_id, "all")`, `getActions(status)` and `ServiceChanges.getAll("pending", service_id)`. `full: true` returns the raw `Services.get` record.
+
+## list_compatible_packages (read)
+
+Packages a service can move to (same module and package group) with every pricing term, the current pricing marked `is_current`. Wraps `Packages.getCompatiblePackages(package_id, module_id, type)`; `type` is `standard` (default) or `addon`, `currency` filters terms, `status` filters packages (default `active`). Use a `pricing_id` from here with `change_service_package`.
+
+## create_service (write)
+
+Wraps `Services.add(vars, packages, notify)`.
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `client_id` | integer | yes | |
+| `pricing_id` | integer | yes | From `list_packages` with `include_pricing` |
+| `qty` | integer | no | Default 1 |
+| `status` | string | no | `pending` (default), `active`, `in_review`, `suspended`, `canceled` |
+| `provision` | boolean | no | `use_module=true`; only effective with `status: active`. Blesta forces the module off for pending services |
+| `configoptions` | object | no | `{package_option_id: value_or_qty}` |
+| `module_fields` | object | no | Module fields merged into `vars`, e.g. `{"domain": "example.com"}`; modules reject the request when their required fields are missing |
+| `coupon_code` | string | no | Resolved via `Coupons.getByCode`; the package ID is passed as `packages` so Blesta can validate it |
+| `module_row_id`, `parent_service_id`, `package_group_id` | integer | no | |
+| `override_price` + `override_currency` | number, string | no | Must be given together |
+| `date_renews` | string | no | ISO 8601 |
+| `staff_id` | integer | no | Default `BLESTA_STAFF_ID` |
+| `notify` | boolean | no | Service creation email |
+| `invoice` | object | no | `{ due_date?, allow_pro_rata?, term_cycles? }`: also create the first invoice with `Invoices.createFromServices` |
+| `dry_run` | boolean | no | Runs `Services.validate(vars, packages)` only; Blesta answers with the same field errors the real call would produce |
+
+Returns `service_id`, `provisioned`, the compact service and the invoice (or `invoice_error` when the service was created but invoicing failed).
+
+## delete_service (write, destructive)
+
+Wraps `Services.delete(service_id, validate=true)`. Blesta accepts only `pending`, `in_review` or `canceled` services whose child services are all canceled; the tool checks both before sending and refuses otherwise. The module is never contacted. Use `cancel_service` for live services.
+
+## change_service_package (write)
+
+Upgrade, downgrade or term change: `Services.edit(service_id, { pricing_id, qty, configoptions, use_module, ...module fields }, bypass_module)`.
+
+* Current configurable options are resent automatically (Blesta requires all of them when `pricing_id` changes); `configoptions` overrides some.
+* With `use_module: true` (default) the module's `changeServicePackage` runs, so the module also validates its fields. Stored plaintext fields are resent; pass `module_fields` for anything else the module requires. `use_module: false` changes only Blesta's record.
+* **No proration.** `Services.edit` does not invoice a price difference; the admin UI computes that with `ServiceChanges.getPresenter`, which returns an empty object over the API. The result shows `change.from` / `change.to` pricing so an invoice or credit can be raised with `create_invoice` / `record_manual_payment`.
+* `dry_run` runs `Services.validateServiceEdit` and returns the exact `vars` that would be sent.
+
+## update_service (write)
+
+Header edits through `Services.edit`: `status`, `date_renews`, `date_last_renewed`, `date_paid_through`, `qty`, `override_price` + `override_currency`, `coupon_code`, `module_row_id`, `module_fields`. Without `provision` the module is bypassed (`bypass_module=true`) and only Blesta's record changes; with `provision: true` the module is used, which is how a pending service is activated and created on the server (`status: "active"`, `notify` sends the welcome email). Pricing changes are refused here: use `change_service_package` (Blesta allows one module action per edit). Removing a coupon or price override is not possible over the API because `http_build_query` drops nulls.
+
+## uncancel_service (write)
+
+Wraps `Services.unCancel(service_id, { use_module })`. Reactivates a canceled or scheduled-for-cancellation service; with `use_module` the module recreates or unsuspends the account.
+
+## move_service (write)
+
+Wraps `Services.move(service_id, client_id)` after checking the destination client exists. Child services move with the parent.
+
+## invoice_service (write)
+
+Wraps `Invoices.createFromServices(client_id, service_ids, currency, due_date, allow_pro_rata, services_renew, [], term_cycles)`. All services must belong to one client (derived from the services). `renewal: true` bills the next `term_cycles` terms; `false` bills new services. Returns the created invoice.
+
+## set_service_field (write)
+
+Stores one module field on the service: `Services.editField` when the key exists, `Services.addField` otherwise (`encrypted: true` for secrets). Database only; the module is not told. To change the account itself use `update_service` with `module_fields` and `provision: true`.
+
+## manage_service_change (write, destructive)
+
+Queued service changes (upgrades waiting for payment): `action: "process"` applies one now (`ServiceChanges.process`), `action: "cancel"` deletes it (`ServiceChanges.cancel`, `void_invoice` also voids its invoice).
+
 ## suspend_service (write, destructive)
 
 Wraps `Services.suspend(service_id, { use_module, staff_id, suspension_reason })`. `use_module=true` (default) also suspends on the provisioning module.

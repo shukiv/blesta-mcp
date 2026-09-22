@@ -5,6 +5,7 @@ import { clientFromEnv } from "./client.js";
 import { registerClientTools } from "./tools/clients.js";
 import { registerInvoiceTools } from "./tools/invoices.js";
 import { registerServiceTools } from "./tools/services.js";
+import { registerServiceLifecycleTools } from "./tools/service_lifecycle.js";
 import { registerPaymentTools } from "./tools/payments.js";
 import { registerGenericTools } from "./tools/generic.js";
 import { registerTransactionTools } from "./tools/transactions.js";
@@ -30,6 +31,7 @@ export function createServer(): McpServer {
   registerClientTools(server, api);
   registerInvoiceTools(server, api);
   registerServiceTools(server, api);
+  registerServiceLifecycleTools(server, api);
   registerPaymentTools(server, api, { clientUri: process.env.BLESTA_CLIENT_URI ?? "client/" });
   registerTransactionTools(server, api);
   registerCatalogTools(server, api);
