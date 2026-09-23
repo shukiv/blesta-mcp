@@ -32,6 +32,12 @@ It ships a small set of purpose-built, read-only tools for the common support wo
 | `create_invoice` (write) | New invoice with line items | `Invoices.add` |
 | `send_invoice` (write) | Queue (re)delivery by email | `Invoices.addDelivery` |
 | `update_invoice` (write) | Header fields incl. void | `Invoices.edit` |
+| `edit_invoice_lines` (write) | Add, update, remove line items | `Invoices.edit` |
+| `delete_invoice` (write) | Delete a draft invoice | `Invoices.deleteDraft` |
+| `merge_invoices` (write) | Combine open invoices into one | `Invoices.merge` |
+| `split_invoice` (write) | Move lines to a new invoice | `Invoices.split` |
+| `append_services_to_invoice` (write) | Add service lines priced by Blesta | `Invoices.appendServices` |
+| `set_invoice_closed` (write) | Recalculate closed state | `Invoices.setClosed` |
 | `suspend_service` / `unsuspend_service` / `cancel_service` (write) | Service lifecycle | `Services.suspend`, `unsuspend`, `cancel` |
 | `get_service` | Full service view: pricing info, options, next invoice date, children, actions, pending changes | `Services.get`, `getOptions`, `getPricingInfo`, `getNextInvoiceDate`, `getAllChildren`, `getActions`, `ServiceChanges.getAll` |
 | `list_compatible_packages` | Upgrade/downgrade targets with pricing terms | `Packages.getCompatiblePackages` |
@@ -146,7 +152,7 @@ Two Blesta quirks worth knowing:
 * Timestamps sent to Blesta must include a timezone (`2026-01-31T12:00:00Z`); Blesta otherwise assumes the company's local time.
 * On IonCube-encoded installs a call can fail with `Failed to retrieve the default value` when an optional argument is omitted. The curated tools omit a few trailing optionals (`transactions/getApplied` without `transaction_id`, `services/getList` without `filters`), so `get_invoice_payments` and `get_client_services` are the first tools to try against a real install; if they return that error, open an issue and the calls will be made fully explicit.
 * `create_invoice_payment_link` and `verify_invoice_payment_link` still work under `BLESTA_READ_ONLY=1`: `Encryption.systemEncrypt`/`systemDecrypt` are side-effect free and are the only POST calls allowed in that mode.
-* Verified against a live IonCube-encoded 5.x install: all 27 read tools pass, including `download_invoice_pdf` and the `dry_run` paths of `create_service`, `change_service_package` and `update_service` (they run Blesta's validation without writing). The 19 write tools were verified against a mock only (request paths, names and `http_build_query` encoding checked against the Blesta model sources); they have not been executed against a live install. A generated payment link opens Blesta's payment-method page without a login once `BLESTA_SYSTEM_KEY`/`BLESTA_SYSTEM_KEY_FILE` is set (see Configuration). Passing an empty key is not equivalent to the default: Blesta uses the empty string literally, so the resulting `sid` is rejected.
+* Verified against a live IonCube-encoded 5.x install: all 27 read tools pass, including `download_invoice_pdf` and the `dry_run` paths of `create_service`, `change_service_package` and `update_service` (they run Blesta's validation without writing). The 25 write tools were verified against a mock only (request paths, names and `http_build_query` encoding checked against the Blesta model sources); they have not been executed against a live install. A generated payment link opens Blesta's payment-method page without a login once `BLESTA_SYSTEM_KEY`/`BLESTA_SYSTEM_KEY_FILE` is set (see Configuration). Passing an empty key is not equivalent to the default: Blesta uses the empty string literally, so the resulting `sid` is rejected.
 
 ## Invoice PDFs
 

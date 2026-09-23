@@ -169,12 +169,13 @@ export function registerInvoiceTools(server: McpServer, api: BlestaClient): void
     {
       title: "Update invoice",
       description:
-        "Edit invoice header fields: status (active/draft/proforma/void), due date, billed date, notes. Wraps Invoices.edit. " +
-        "Use `status: \"void\"` to void an unpaid invoice (irreversible in practice). Line items are not editable here; use blesta_call invoices/edit with `lines` for that." +
+        "Edit invoice header fields: status (active/draft/proforma/void), currency, due date, billed date, notes. Wraps Invoices.edit. " +
+        "Use `status: \"void\"` to void an unpaid invoice (irreversible in practice). Line items are edited with edit_invoice_lines." +
         writeNote(api),
       inputSchema: z.object({
         invoice_id: z.number().int().positive().describe("Numeric invoice ID"),
         status: z.enum(["active", "draft", "proforma", "void"]).optional(),
+        currency: z.string().length(3).optional().describe("ISO 4217; Blesta refuses a change once payments are applied"),
         date_due: z.string().optional().describe("ISO 8601 with timezone"),
         date_billed: z.string().optional().describe("ISO 8601 with timezone"),
         note_public: z.string().optional(),
@@ -191,6 +192,7 @@ export function registerInvoiceTools(server: McpServer, api: BlestaClient): void
       if (!current || typeof current !== "object") return fail(`Invoice ${invoice_id} not found.`);
       // Invoices.edit reads vars.status unconditionally; always send one.
       if (vars.status === undefined && current.status) vars.status = current.status;
+      if (typeof vars.currency === "string") vars.currency = vars.currency.toUpperCase();
       // Invoices.edit deletes every unsent delivery row and re-inserts vars.delivery, so pass the
       // pending methods back or they are silently dropped. getDelivery(sent=false) cannot be
       // expressed over the API (strict === false), so fetch all and filter here.

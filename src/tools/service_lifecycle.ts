@@ -171,10 +171,13 @@ export function registerServiceLifecycleTools(server: McpServer, api: BlestaClie
         type: z.enum(["standard", "addon"]).default("standard").describe("Package group type to search"),
         currency: z.string().length(3).optional().describe("Only list pricing in this currency"),
         status: z.enum(["active", "inactive", "restricted", "all"]).default("active").describe("Package status filter"),
+        name: z.string().max(200).optional().describe("Only packages whose name contains this text (case-insensitive)"),
+        limit: z.number().int().min(1).max(200).default(40).describe("Packages per page; large groups exceed the output cap otherwise"),
+        offset: z.number().int().min(0).default(0).describe("Skip this many matching packages (use next_offset to page)"),
       }),
       annotations: READ,
     },
-    guard(async ({ service_id, type, currency, status }) => {
+    guard(async ({ service_id, type, currency, status, name, limit, offset }) => {
       const svc = await fetchService(api, service_id);
       if (!svc) return fail(`Service ${service_id} not found.`);
       if (!svc.package?.id || svc.package.module_id === undefined) {
@@ -197,8 +200,20 @@ export function registerServiceLifecycleTools(server: McpServer, api: BlestaClie
             .filter((pr) => !currency || (pr.currency ?? "").toUpperCase() === currency.toUpperCase())
             .map((pr) => ({ ...compactPricing(pr), is_current: String(pr.id) === cur })),
         }))
-        .filter((p) => p.pricing.length > 0);
-      return ok({ service_id, current_pricing_id: svc.pricing_id, count: packages.length, packages });
+        .filter((p) => p.pricing.length > 0)
+        .filter((p) => !name || String(p.name ?? "").toLowerCase().includes(name.toLowerCase()));
+      // Groups can hold well over a hundred packages; page so the result stays parseable JSON under the output cap.
+      const page = packages.slice(offset, offset + limit);
+      const nextOffset = offset + limit < packages.length ? offset + limit : null;
+      return ok({
+        service_id,
+        current_pricing_id: svc.pricing_id,
+        total: packages.length,
+        count: page.length,
+        offset,
+        next_offset: nextOffset,
+        packages: page,
+      });
     })
   );
 

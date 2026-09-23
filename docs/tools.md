@@ -501,13 +501,45 @@ Wraps `Invoices.add(vars)`.
 
 Output: `{ invoice_id, invoice }`. Amounts are sent with four decimals as Blesta stores them.
 
+## edit_invoice_lines (write)
+
+Line items through `Invoices.edit(invoice_id, { status, currency, lines, delivery })`. Semantics come straight from the model: a line with `id` is updated, a line with `id` and empty description and amount is deleted, a line without `id` is added, and lines not mentioned are untouched.
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `invoice_id` | integer | yes | |
+| `lines` | array | no | `{ id?, description?, qty?, amount?, tax?, service_id? }`. With `id`, missing fields keep their current value; without `id`, `description` and `amount` are required, `qty` defaults to 1 and `tax` to true |
+| `remove_line_ids` | array | no | Line IDs to delete |
+
+The current `status` and `currency` are always sent because `Invoices.edit` reads both unconditionally, and unsent delivery rows are passed back so queued emails are not dropped. Blesta refuses line changes on invoices with payments applied (`id.amount_applied`); void invoices are refused by the tool. Returns counts and the invoice with its lines.
+
+## delete_invoice (write, destructive)
+
+Wraps `Invoices.deleteDraft(invoice_id)`. Only `draft` invoices; the tool checks the status first. Anything else is voided with `update_invoice`.
+
+## merge_invoices (write, destructive)
+
+Wraps `Invoices.merge(invoice_ids, invoice_id?)`. The tool checks that all invoices exist, belong to one client, share a currency and are open (`active`, `proforma`, `draft`). Without `into_invoice_id` Blesta creates a new active invoice; the source invoices are voided by Blesta. Returns the merged invoice.
+
+## split_invoice (write)
+
+Wraps `Invoices.split(invoice_id, line_items)`. `line_ids` are moved to a new invoice; at least one line must stay. The model matches lines by `id` (the tool sends id, description, qty and amount as the model expects). Returns both invoices.
+
+## append_services_to_invoice (write)
+
+Wraps `Invoices.appendServices(invoice_id, service_ids)`: Blesta prices each service from its package and adds the lines. Refused for void invoices.
+
+## set_invoice_closed (write)
+
+Wraps `Invoices.setClosed(invoice_id)`: closes an active invoice that is paid in full, or clears a stale closed date. Blesta does this itself when payments are applied; the tool exists for repairs after manual transaction changes.
+
 ## send_invoice (write)
 
 Wraps `Invoices.get` (to learn the client), `Invoices.addDelivery(invoice_id, { method }, client_id)`, `Invoices.getDelivery(invoice_id)`. Queues a delivery record; Blesta's cron sends it and fills `date_sent`. `method` defaults to `email`; other methods must be enabled for the company.
 
 ## update_invoice (write, destructive)
 
-Wraps `Invoices.edit(invoice_id, vars)` for header fields only: `status` (`active`, `draft`, `proforma`, `void`), `date_due`, `date_billed`, `note_public`, `note_private`. Voiding is the common use. Line-item edits go through `blesta_call` `invoices/edit` with `vars.lines` (each existing line needs its `id`, otherwise it is added).
+Wraps `Invoices.edit(invoice_id, vars)` for header fields only: `status` (`active`, `draft`, `proforma`, `void`), `currency`, `date_due`, `date_billed`, `note_public`, `note_private`. Voiding is the common use. Line items are edited with `edit_invoice_lines`.
 
 Two Blesta behaviours are handled for you (verified in `app/models/invoices.php`):
 
@@ -522,7 +554,9 @@ One service in full: compact record (module fields with encrypted values hidden)
 
 ## list_compatible_packages (read)
 
-Packages a service can move to (same module and package group) with every pricing term, the current pricing marked `is_current`. Wraps `Packages.getCompatiblePackages(package_id, module_id, type)`; `type` is `standard` (default) or `addon`, `currency` filters terms, `status` filters packages (default `active`). Use a `pricing_id` from here with `change_service_package`.
+Packages a service can move to (same module and package group) with every pricing term, the current pricing marked `is_current`. Wraps `Packages.getCompatiblePackages(package_id, module_id, type)`; `type` is `standard` (default) or `addon`, `currency` filters terms, `status` filters packages (default `active`), `name` filters by substring. Results are paged (`limit` default 40, `offset`; `next_offset` is set while more remain) because a group can hold well over a hundred packages. Use a `pricing_id` from here with `change_service_package`.
+
+Groups can hold more than a hundred packages, so the list is paged: `limit` (default 40, max 200) and `offset` select a page, `name` keeps only packages whose name contains the text, and the result carries `total`, `count`, `offset` and `next_offset` (null on the last page). Page through with `next_offset` rather than raising `limit` past the output cap.
 
 ## create_service (write)
 

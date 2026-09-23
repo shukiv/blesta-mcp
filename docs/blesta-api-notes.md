@@ -156,3 +156,7 @@ Blesta's own [Component API plugin](https://docs.blesta.com/integrations/plugins
 * `Services.delete` only removes `pending`, `in_review` or `canceled` services whose children are all canceled. `Services.renew` merely notifies the module after payment; the renewal invoice comes from `Invoices.createFromServices(..., services_renew=true)`.
 * Left to `blesta_call`: the cron-oriented getters (`getAllRenewing`, `getRenewablePaidList`, `getPendingSuspensionList`, ...), `getSimpleList`, `getAllByClient`, `searchServiceFields`, `getWelcomeEmailTags` and `renew`.
 
+## Invoice line items over `Invoices.edit`
+
+`vars.lines` is processed per entry: `id` present with a description or amount updates that line; `id` present with both empty deletes it (`deleteLine`); no `id` adds one (`addLine`). Lines not listed are untouched. `edit` reads `vars['currency']` (for `Currencies::toDecimal`) and `vars['status']` unconditionally, so both must be sent even when unchanged. Line changes, currency changes and status changes are refused with `id.amount_applied` once a payment is applied. `Invoices.deleteDraft` is the only delete; `merge` voids the sources; `split(invoice_id, line_items)` wants line objects with `id`.
+

@@ -11,6 +11,8 @@ src/index.ts          creates McpServer, registers tool groups, serves stdio
         ├── src/tools/clients.ts     search_clients, get_client
         ├── src/tools/invoices.ts    search_invoices, get_invoice
         ├── src/tools/services.ts    get_client_services
+        ├── src/tools/invoice_editing.ts edit_invoice_lines, delete_invoice, merge_invoices, split_invoice,
+        │                            append_services_to_invoice, set_invoice_closed
         ├── src/tools/service_lifecycle.ts get_service, list_compatible_packages, create/delete/update/move/uncancel_service,
         │                            change_service_package, invoice_service, set_service_field, manage_service_change
         ├── src/tools/payments.ts    get_invoice_payments, create_/verify_invoice_payment_link
