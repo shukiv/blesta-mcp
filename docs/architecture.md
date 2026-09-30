@@ -22,6 +22,7 @@ src/index.ts          creates McpServer, registers tool groups, serves stdio
         ├── src/tools/catalog.ts     list_packages, get_package, list_quotations, get_quotation, lookup_coupon
         └── src/tools/generic.ts     blesta_call
 src/common.ts         READ/WRITE/DESTRUCTIVE annotation presets, resolveStaffId, resolveCompanyId
+src/phone_index.ts    PhoneIndex: phone-number lookup Blesta lacks (staged build, disk cache, digit-suffix matching)
                 │
                 ▼
 src/format.ts         ok()/fail() result builders, guard() error wrapper, output cap

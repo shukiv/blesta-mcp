@@ -10,29 +10,45 @@ Output is capped at 60,000 characters per call. Longer results are cut and end w
 
 ## search_clients
 
-Find customers by free text. Wraps `Clients.search` and `Clients.getSearchCount`.
+Find customers by free text or by phone number. Wraps `Clients.search` and `Clients.getSearchCount`, plus a phone index the server builds itself.
 
 **Input**
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `query` | string | yes | Email, first/last name, company, or client number |
-| `page` | integer | no | Default `1` |
+| `query` | string | yes | Email, first/last name, company, address, client number, staff-note text, or a phone number in any format |
+| `page` | integer | no | Default `1`; pages the text search |
+| `search_phones` | boolean | no | Default `true`. Look the query up as a phone number when it has 7+ digits and no letters |
+| `refresh_phone_index` | boolean | no | Default `false`. Rebuild the phone index now, for a number added to Blesta moments ago |
 
 **Output**
 
 ```json
 {
-  "query": "ada@example.com",
+  "query": "+1 555 010 0199",
   "page": 1,
-  "total_matches": 1,
-  "results": [ { "id": 1, "id_code": "1500", "first_name": "Ada", "last_name": "Lovelace", "email": "ada@example.com", "company": "", "status": "active", "client_group_id": 1, "...": "..." } ]
+  "total_matches": 0,
+  "phone_matched_clients": 1,
+  "results": [
+    { "id": 1, "id_code": "1500", "status": "active", "contact_id": 10, "first_name": "Ada", "last_name": "Lovelace",
+      "company": "", "email": "ada@example.com", "matched_on": ["phone"],
+      "phone_matches": [ { "number": "555-010-0199 ext 2", "contact_id": 10, "contact": "primary", "type": "phone", "location": "work" } ] }
+  ],
+  "phone_index": { "status": "ready", "coverage": "all_contacts", "built_at": "2026-09-30T12:00:00.000Z", "clients": 1500, "numbers": 1650, "source": "disk" }
 }
 ```
 
-`results` is Blesta's own client search row (client columns joined with the primary contact). `total_matches` counts every page.
+Text hits are Blesta's own search rows (client columns joined with the primary contact) with `matched_on: ["search"]`; `total_matches` counts every page of them. Phone hits come first on page 1, carry `matched_on: ["phone"]` and `phone_matches` with the number exactly as stored. A client found both ways has both.
 
-**Errors**: none specific; `results` is empty when nothing matches.
+**What Blesta searches and what it does not.** `Clients.search` matches `id_code`, company, name, `address1` and email of the primary and additional contacts, and the title and body of client notes. It never looks at `contact_numbers`, and no API method searches phone numbers. The phone index fills that gap:
+
+* Built on the first phone-like query: `Clients.getAll` (one call) lists every client with its primary contact, then `Contacts.getNumbers` per primary contact, then `Contacts.getAll` per client and `getNumbers` for each additional contact. That is roughly two read calls per client; expect a couple of minutes per 1,500 clients at the default concurrency of 8, with primary-contact numbers usable after about half of that.
+* Lookups are answered from whatever has been read so far. A call waits up to 25 seconds for a match; if the index is still `building` and nothing matched, the result has a `note` asking to call again.
+* Matching ignores formatting: values are split on letters and list separators (extensions and two numbers in one field are handled, junk such as an e-mail address in a number field is skipped), reduced to digits, leading zeros dropped, and two numbers match when one is a suffix of the other. `0555 010 0199`, `+1 555-010-0199` and `5550100199` are the same number; so are a landline with and without its area code.
+* The index is cached in a private file (`~/.cache/blesta-mcp/phone-index-<hash>.json`, mode `0600` in a `0700` directory) so a restart does not rebuild it. It contains customer phone numbers and client IDs. `BLESTA_PHONE_INDEX_FILE` moves it; `BLESTA_PHONE_INDEX_FILE=off` keeps it in memory only.
+* Refresh: in the background once it is older than `BLESTA_PHONE_INDEX_TTL_HOURS` (default 24), on a miss when it is older than an hour, or on `refresh_phone_index`. Blesta has no "changed since" query for contacts, so a refresh is a full rebuild.
+
+**Errors**: none specific; `results` is empty when nothing matches. A failed index build is reported in `phone_index.error` and the text search still returns.
 
 ---
 

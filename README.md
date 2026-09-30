@@ -8,7 +8,7 @@ It ships a small set of purpose-built, read-only tools for the common support wo
 
 | Tool | What it does | Blesta methods |
 | --- | --- | --- |
-| `search_clients` | Find customers by email, name, company or client number | `Clients.search`, `Clients.getSearchCount` |
+| `search_clients` | Find customers by email, name, company, client number or phone number | `Clients.search`, `Clients.getSearchCount`, phone index over `Contacts.getNumbers` |
 | `get_client` | Full client record, optionally with effective settings | `Clients.get` |
 | `search_invoices` | Free-text invoice search, or list a client's invoices by status | `Invoices.search`, `Invoices.getList`, `getListCount` |
 | `get_invoice` | Invoice details, line items, totals, paid/due | `Invoices.get` |
@@ -98,6 +98,9 @@ All configuration is by environment variable.
 | `BLESTA_COMPANY_ID` | no | Company for catalog calls; default is the first company Blesta reports |
 | `BLESTA_ALLOW_PAYMENTS` | no | `1` enables `process_payment` (charges stored payment accounts) |
 | `BLESTA_DOWNLOAD_DIR` | no | Where `download_invoice_pdf` saves files; default is `blesta-mcp/` under the OS temp dir |
+| `BLESTA_PHONE_INDEX_FILE` | no | Cache file for the phone index used by `search_clients`; default `~/.cache/blesta-mcp/phone-index-<hash>.json` (mode 0600, holds customer phone numbers). `off` keeps the index in memory only |
+| `BLESTA_PHONE_INDEX_TTL_HOURS` | no | Age after which the phone index is rebuilt in the background; default 24 |
+| `BLESTA_INDEX_CONCURRENCY` | no | Parallel read calls while building the phone index; default 8, max 32 |
 | `BLESTA_PUBLIC_URL` | no | Base URL used in customer-facing links when it differs from `BLESTA_URL`, e.g. `https://www.example.com/clients` while the API is called at `https://clients.example.com` |
 | `BLESTA_CLIENT_URI` | no | Client-area path used in payment links, default `client/` |
 | `BLESTA_TIMEOUT_MS` | no | HTTP timeout, default `30000` |
