@@ -482,6 +482,53 @@ Output: `{ code, found, usable_now, checks: { status_active, within_dates, usage
 
 ---
 
+## update_client_profile (write)
+
+Contact details through `Contacts.edit(contact_id, vars)`: `first_name`, `last_name`, `email`, `title`, `company`, `address1`, `address2`, `city`, `state`, `zip`, `country`. `client_id` edits the primary contact; `contact_id` edits a specific billing or other contact. Only the fields passed are changed.
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `client_id` / `contact_id` | integer | one of them | |
+| profile fields | string | no | `country` is ISO 3166-1 alpha-2, `state` an ISO 3166-2 subdivision code and needs a country |
+| `update_login` | boolean | no | Default `true`. See below |
+| `verify_email` | boolean | no | Default `false`: apply the new email immediately. `true` lets Blesta keep the old address and send a verification first |
+| `dry_run` | boolean | no | Runs `Contacts.validateContact(vars, edit=true, validate_client=true)` and writes nothing |
+
+Three Blesta behaviours the tool handles:
+
+* Validation always requires `first_name`, `last_name` and `email`, even though the update is partial. The tool reads the contact and resends those three.
+* Unless `verify` is sent false, a client group with email verification makes `Contacts.edit` put the old email back and start a verification. The admin UI sends false, and so does the tool by default. The result is checked after the write: fields that did not change are listed under `not_applied`.
+* The login is a separate `Users` record. When the primary contact's email changes and the client's `username_type` is `email` (or the username equals the old email), the tool also calls `Users.edit(user_id, { username: new_email, verify: false })`, as `AdminClients::edit` does. The result reports `login_username_updated`; if that call fails (for example the address is already someone's username) the contact change stands and `login_update_error` explains it.
+
+Returns `applied` (`{ field: { from, to } }`) and the contact.
+
+## set_contact_number (write, destructive)
+
+Phone and fax numbers of a contact: `action: "add"` (`Contacts.addNumber`), `"update"` (`Contacts.editNumber`), `"delete"` (`Contacts.deleteNumber`). `client_id` selects the primary contact, `contact_id` another one. `number_id` (from `get_client_contacts`) is required for update and delete and must belong to that contact; `type` is `phone` or `fax`, `location` is `home`, `work` or `mobile`. Returns the contact's numbers after the change and refreshes that contact in the phone search index, so `search_clients` finds the new number at once.
+
+## add_client_contact (write)
+
+Wraps `Contacts.add(vars)` for an additional contact: `contact_type` `billing` (default) or `other` (with optional `contact_type_id`), required `first_name`, `last_name`, `email`, optional address fields and `numbers` (`[{ number, type, location }]`). `dry_run` validates with `Contacts.validateContact`.
+
+## delete_client_contact (write, destructive)
+
+Wraps `Contacts.delete(contact_id)`. Blesta refuses the primary contact and the contact invoices are addressed to (`inv_address_to`); the tool checks both and says which applies.
+
+## update_client_settings (write)
+
+Per-client settings written with `Clients.setSettings(client_id, vars, value_keys)`, the call the admin UI uses (`Clients.setClientSettings` applies the customer-side "may the client change this" rules and would refuse staff changes).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `language` | string | Checked against `Languages.getAll` |
+| `default_currency` | string (3) | Checked against `Currencies.getAll` |
+| `tax_id` | string | Empty string clears it |
+| `tax_exempt`, `receive_email_marketing`, `autodebit` | boolean | Stored as `true` / `false` |
+| `inv_method` | string | Checked against `Invoices.getDeliveryMethods(client_id)` |
+| `inv_address_to` | integer | Must be a contact of this client |
+
+Because `setSettings` itself validates nothing, every value is checked before the write and a bad one fails with the list of valid choices. Returns `updated` (`{ key: { from, to } }`). Custom client fields are not wrapped: use `blesta_call` with `clients/getCustomFields` and `clients/setCustomField`.
+
 ## add_client_note (write)
 
 Wraps `Clients.addNote(client_id, staff_id, vars)`.

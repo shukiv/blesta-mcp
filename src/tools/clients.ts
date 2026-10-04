@@ -3,10 +3,10 @@ import * as z from "zod/v4";
 import type { BlestaClient } from "../client.js";
 import { guard, ok, fail, isMissing } from "../format.js";
 import { READ, WRITE, DESTRUCTIVE, resolveStaffId, writeNote } from "../common.js";
-import { PhoneIndex, phoneIndexOptionsFromEnv, phoneQueryKey } from "../phone_index.js";
+import { sharedPhoneIndex, phoneQueryKey } from "../phone_index.js";
 
 export function registerClientTools(server: McpServer, api: BlestaClient): void {
-  const phones = new PhoneIndex(api, phoneIndexOptionsFromEnv(api.apiUrl));
+  const phones = sharedPhoneIndex(api);
 
   server.registerTool(
     "search_clients",

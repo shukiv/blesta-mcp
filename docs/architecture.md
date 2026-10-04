@@ -9,6 +9,8 @@ MCP client (Claude Code, Hermes, Claude Desktop)
 src/index.ts          creates McpServer, registers tool groups, serves stdio
         │
         ├── src/tools/clients.ts     search_clients, get_client
+        ├── src/tools/client_profile.ts update_client_profile, set_contact_number, add_client_contact,
+        │                            delete_client_contact, update_client_settings
         ├── src/tools/invoices.ts    search_invoices, get_invoice
         ├── src/tools/services.ts    get_client_services
         ├── src/tools/invoice_editing.ts edit_invoice_lines, delete_invoice, merge_invoices, split_invoice,

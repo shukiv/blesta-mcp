@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { clientFromEnv } from "./client.js";
 import { registerClientTools } from "./tools/clients.js";
+import { registerClientProfileTools } from "./tools/client_profile.js";
 import { registerInvoiceTools } from "./tools/invoices.js";
 import { registerInvoiceEditingTools } from "./tools/invoice_editing.js";
 import { registerServiceTools } from "./tools/services.js";
@@ -30,6 +31,7 @@ export function createServer(): McpServer {
   );
 
   registerClientTools(server, api);
+  registerClientProfileTools(server, api);
   registerInvoiceTools(server, api);
   registerInvoiceEditingTools(server, api);
   registerServiceTools(server, api);

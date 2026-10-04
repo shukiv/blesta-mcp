@@ -189,6 +189,39 @@ export class PhoneIndex {
     }
   }
 
+  /**
+   * Re-reads one contact's numbers and swaps them into the index, so a number changed through this
+   * server is searchable at once instead of after the next full rebuild. No-op before the first build.
+   */
+  async refreshContact(client_id: number, contact_id: number, primary: boolean): Promise<void> {
+    await (this.loaded ??= this.load());
+    if (this.builtAt === null && !this.building) return;
+    let rows: unknown;
+    try {
+      rows = await this.api.get("contacts", "getNumbers", { contact_id });
+    } catch {
+      return;
+    }
+    const fresh: Indexed[] = [];
+    for (const r of (Array.isArray(rows) ? rows : []) as Array<{ number?: unknown; type?: string; location?: string }>) {
+      const keys = phoneKeys(r.number);
+      if (keys.length) fresh.push({ client_id, contact_id, number: String(r.number), type: r.type, location: r.location, primary, keys });
+    }
+    const swap = (list: Indexed[]) => [...list.filter((e) => e.contact_id !== contact_id), ...fresh];
+    this.served = swap(this.served);
+    if (this.pending.length) this.pending = swap(this.pending);
+    await this.save();
+  }
+
+  /** Drops a deleted contact's numbers from the index. */
+  async removeContact(contact_id: number): Promise<void> {
+    await (this.loaded ??= this.load());
+    if (this.builtAt === null && !this.building) return;
+    this.served = this.served.filter((e) => e.contact_id !== contact_id);
+    if (this.pending.length) this.pending = this.pending.filter((e) => e.contact_id !== contact_id);
+    await this.save();
+  }
+
   private all(): Indexed[] {
     return this.pending.length ? [...this.served, ...this.pending] : this.served;
   }
@@ -327,4 +360,16 @@ export class PhoneIndex {
       await unlink(tmp).catch(() => undefined);
     }
   }
+}
+
+const instances = new WeakMap<BlestaClient, PhoneIndex>();
+
+/** One index per API client, shared by the search tool and the tools that change phone numbers. */
+export function sharedPhoneIndex(api: BlestaClient): PhoneIndex {
+  let index = instances.get(api);
+  if (!index) {
+    index = new PhoneIndex(api, phoneIndexOptionsFromEnv(api.apiUrl));
+    instances.set(api, index);
+  }
+  return index;
 }
